@@ -12,6 +12,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Iterator
 from typing import Any
 
 
@@ -254,17 +255,16 @@ def resolve_target(target: str | None) -> dict[str, Any] | None:
     return {"label": raw, "target_bpb": value, "as_of": None, "source": None, "notes": None}
 
 
-def expand_grid(base_overrides: dict[str, str], grids: list[tuple[str, list[str]]]) -> list[dict[str, str]]:
+def expand_grid(base_overrides: dict[str, str], grids: list[tuple[str, list[str]]]) -> Iterator[dict[str, str]]:
     if not grids:
-        return [dict(base_overrides)]
+        yield dict(base_overrides)
+        return
     keys = [key for key, _ in grids]
     values = [grid_values for _, grid_values in grids]
-    expanded: list[dict[str, str]] = []
     for combo in itertools.product(*values):
         overrides = dict(base_overrides)
         overrides.update({key: value for key, value in zip(keys, combo)})
-        expanded.append(overrides)
-    return expanded
+        yield overrides
 
 
 def load_result_for_path(item: str) -> tuple[str, dict[str, Any], Path | None]:
@@ -455,12 +455,11 @@ def cmd_sweep(args: argparse.Namespace) -> int:
     base_overrides = parse_set_overrides(args.set or [])
     grid_overrides = parse_grid_overrides(args.grid or [])
     target = resolve_target(args.target)
-    combos = expand_grid(base_overrides, grid_overrides)
     rows = []
     overall_returncode = 0
     base_name = args.name or path.stem
 
-    for index, overrides in enumerate(combos, start=1):
+    for index, overrides in enumerate(expand_grid(base_overrides, grid_overrides), start=1):
         combo_name = f"{base_name}-{index:02d}-{combo_suffix(overrides)}"
         run_dir, env, command = materialize_run(path.stem, payload, overrides, combo_name)
         if args.materialize_only:
