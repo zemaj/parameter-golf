@@ -1,0 +1,17 @@
+{
+  "description": "Materialize the current top public track script with its main launch shape for comparison work.",
+  "script": "records/track_10min_16mb/2026-03-25_ValCalib_GPTQ_XSA_BigramHash3072/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 8
+  },
+  "env": {
+    "RUN_ID": "record_2026_03_25_reference",
+    "BIGRAM_VOCAB_SIZE": "3072",
+    "BIGRAM_DIM": "112",
+    "WARMDOWN_ITERS": "4000",
+    "TARGET_MB": "15.9",
+    "SEED": "314"
+  },
+  "notes": "Useful as a harness target for parser and command generation; the script itself has external dependencies like FlashAttention 3."
+}

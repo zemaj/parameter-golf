@@ -1,0 +1,18 @@
+{
+  "description": "11-layer EMA/XSA/late-QAT experiment with a manual final-eval temperature hook.",
+  "script": "experiments/2026-03-31_low_risk_11l_ema_sliding_qat_export/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 8
+  },
+  "env": {
+    "RUN_ID": "low_risk_11l_reference",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "4000",
+    "TRAIN_LOG_EVERY": "500",
+    "EVAL_TEMPERATURE": "1.0"
+  },
+  "notes": "Safe-track candidate driven from experiments/ with harness-friendly final metric lines."
+}

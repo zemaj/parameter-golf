@@ -1,0 +1,18 @@
+{
+  "description": "Reference 8xGPU baseline launch shape matching the root trainer defaults closely.",
+  "script": "train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 8
+  },
+  "env": {
+    "RUN_ID": "baseline_reference",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50"
+  },
+  "notes": "This is a command materialization preset, not a promise that the current environment has 8xH100 available."
+}

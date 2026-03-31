@@ -1,0 +1,20 @@
+{
+  "description": "Weird auxiliary hash-prior wrapper around the root baseline trainer.",
+  "script": "experiments/hash_aux_prior/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 8
+  },
+  "env": {
+    "RUN_ID": "hash_aux_prior_reference",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "AUX_PRIOR_ENABLE": "1",
+    "AUX_PRIOR_BUCKETS": "4096",
+    "AUX_PRIOR_DIM": "16",
+    "AUX_PRIOR_HASHES": "2",
+    "AUX_PRIOR_SCALE_INIT": "0.03"
+  },
+  "notes": "Weird track candidate; scale the prior from the harness with --set overrides."
+}

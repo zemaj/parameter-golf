@@ -1,0 +1,17 @@
+{
+  "description": "Short baseline smoke run against the root train_gpt.py entry point.",
+  "script": "train_gpt.py",
+  "launch": {
+    "type": "python"
+  },
+  "env": {
+    "RUN_ID": "baseline_smoke",
+    "ITERATIONS": "20",
+    "TRAIN_BATCH_TOKENS": "8192",
+    "VAL_BATCH_SIZE": "8192",
+    "VAL_LOSS_EVERY": "0",
+    "TRAIN_LOG_EVERY": "10",
+    "MAX_WALLCLOCK_SECONDS": "0"
+  },
+  "notes": "Useful for checking that a script still starts and prints final metrics; requires local data availability."
+}

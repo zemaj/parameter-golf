@@ -1,0 +1,18 @@
+{
+  "description": "Benchmark-exploit candidate using AR self-calibration plus export-time temperature search and score-aware proxy selection.",
+  "script": "records/track_non_record_16mb/2026-03-31_ARTempCalib_LongContextProxy/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 8
+  },
+  "env": {
+    "RUN_ID": "ar_tempcalib_proxy_reference",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "EXPORT_CALIB_SEQS": "16",
+    "EXPORT_TEMP_GRID": "0.90,0.94,0.98,1.00",
+    "EXPORT_PROXY_STRIDE": "64"
+  },
+  "notes": "Benchmark exploit track; candidate script prints benchmark_exploit_candidate_exact for parser-friendly summaries."
+}
