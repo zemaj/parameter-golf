@@ -1,0 +1,28 @@
+{
+  "description": "Single-H100 screening preset for the auxiliary hash-prior candidate.",
+  "script": "experiments/hash_aux_prior/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "hash_aux_prior_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "AUX_PRIOR_ENABLE": "1",
+    "AUX_PRIOR_BUCKETS": "4096",
+    "AUX_PRIOR_DIM": "16",
+    "AUX_PRIOR_HASHES": "2",
+    "AUX_PRIOR_SCALE_INIT": "0.03"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Directional single-GPU screening preset for the hash-prior idea."
+}

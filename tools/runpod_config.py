@@ -1,0 +1,12 @@
+from __future__ import annotations
+
+import os
+
+
+DEFAULT_SCREENING_POD_NAME = os.environ.get("RUNPOD_SCREENING_POD_NAME", "parameter-golf-screening")
+DEFAULT_SCREENING_GPU_TYPE_ID = os.environ.get("RUNPOD_SCREENING_GPU_TYPE_ID", "NVIDIA H100 PCIe")
+DEFAULT_SCREENING_TEMPLATE_ID = os.environ.get("RUNPOD_SCREENING_TEMPLATE_ID", "y5cejece4j")
+DEFAULT_VOLUME_MOUNT_PATH = os.environ.get("RUNPOD_SCREENING_VOLUME_MOUNT_PATH", "/workspace")
+DEFAULT_PORTS = ("22/tcp", "8888/http")
+DEFAULT_CONTAINER_DISK_GB = int(os.environ.get("RUNPOD_SCREENING_CONTAINER_DISK_GB", "50"))
+DEFAULT_VOLUME_GB = int(os.environ.get("RUNPOD_SCREENING_VOLUME_GB", "80"))

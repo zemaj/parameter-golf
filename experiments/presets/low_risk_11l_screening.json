@@ -1,0 +1,24 @@
+{
+  "description": "Single-H100 screening preset for the 11-layer EMA/XSA/late-QAT candidate.",
+  "script": "experiments/2026-03-31_low_risk_11l_ema_sliding_qat_export/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "low_risk_11l_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "EVAL_TEMPERATURE": "1.0"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Directional single-GPU screening preset for the low-risk 11-layer stack."
+}

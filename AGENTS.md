@@ -15,7 +15,6 @@ Agents working in this repo should preserve those constraints and optimize for r
 
 - `README.md`: challenge rules, leaderboard, submission requirements, and getting-started docs.
 - `train_gpt.py`: baseline CUDA trainer for new participants.
-- `train_gpt_mlx.py`: baseline MLX trainer for Apple Silicon.
 - `data/`: dataset download/export helpers and tokenizer/data workflow docs.
 - `records/track_10min_16mb/`: accepted and example main-track submissions.
 - `records/track_non_record_16mb/`: non-record or unlimited-compute submissions.
@@ -31,9 +30,9 @@ Agents working in this repo should preserve those constraints and optimize for r
 
 ### 2. Keep baseline code beginner-friendly
 
-- `train_gpt.py` and `train_gpt_mlx.py` are starter baselines, not the place for every SOTA idea.
+- `train_gpt.py` is the starter baseline, not the place for every SOTA idea.
 - Preserve readability for newcomers.
-- Keep `train_gpt.py` and `train_gpt_mlx.py` under the stated `1500` line soft limit unless the user explicitly wants to revisit that policy.
+- Keep `train_gpt.py` under the stated `1500` line soft limit unless the user explicitly wants to revisit that policy.
 - Competitive or experimental variants usually belong in a new folder under `records/`, not by turning the root trainer into a research dump.
 
 ### 3. Put work in the right place
@@ -75,6 +74,19 @@ Be aware that ideas that improve pre-quantization loss may still fail if they:
 - depend on illegal post-training data access.
 
 ## Practical Guidance For Agents
+
+### Current screening workflow
+
+- The active lightweight experiment path is the Runpod `1xH100` screening harness under `tools/pg_harness.py`, not a local Mac or MLX path.
+- Compare screening candidates only against matched `1xH100` screening baselines from the same workflow. Do not treat screening numbers as leaderboard-comparable.
+- Screening variance is real even on the same pod shape, so tiny deltas should be treated as tentative until repeated.
+- Keep one screening pod at most. Delete unused paused pods if you do not need their persisted volume, because stopped pods still incur storage charges.
+- For active iteration batches, keeping one pod running can be more reliable than stop/resume loops because host-capacity failures can block resume.
+
+### Current directional learnings
+
+- `hash_aux_prior_screening` showed only a very small positive signal versus its matched `1xH100` baseline, so it is worth rerunning but not yet convincing.
+- `low_risk_11l_screening` was decisively worse than its matched `1xH100` baseline and also degraded badly in its final export path, so treat that configuration as a negative result unless it is substantially reworked.
 
 ### When modifying training or evaluation
 

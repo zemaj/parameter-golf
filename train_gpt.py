@@ -1,7 +1,7 @@
 """
-The `train_gpt.py` and `train_gpt_mlx.py` scripts are intended as good launching-off points for new participants, not SOTA configs. We'll accept PRs that tune, improve, or simplify these scripts without significantly increasing complexity, but competitive submissions should stay in the `/records` folder.
+The `train_gpt.py` script is intended as a good launching-off point for new participants, not a SOTA config. We'll accept PRs that tune, improve, or simplify this script without significantly increasing complexity, but competitive submissions should stay in the `/records` folder.
 
-Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` and `train_gpt_mlx.py` never are longer than 1500 lines.
+Hard stop: To keep readable for newcomers, let's make sure `train_gpt.py` never grows beyond 1500 lines.
 """
 
 from __future__ import annotations
