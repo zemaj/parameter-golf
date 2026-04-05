@@ -1,0 +1,10 @@
+{
+  "name": "Loader + Full GPTQ + XSA11 + QK Gain 4.0 + SLOT",
+  "track": "non-record-16mb",
+  "val_bpb": null,
+  "bytes_total": null,
+  "blurb": "Runnable non-record experiment derived from PR #1060, adding QK_GAIN_INIT=4.0 and a SLOT-only eval pass adapted from PR #1176 while leaving TTT disabled by default. Historical seed logs in this folder are inherited from the copied #1060 base and are not claims for this variant.",
+  "author": "OpenAI Codex",
+  "github_id": "openai",
+  "date": "2026-04-01"
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 
+DEFAULT_SCREENING_POD_ID = os.environ.get("RUNPOD_SCREENING_POD_ID", "")
 DEFAULT_SCREENING_POD_NAME = os.environ.get("RUNPOD_SCREENING_POD_NAME", "parameter-golf-screening")
 DEFAULT_SCREENING_GPU_TYPE_ID = os.environ.get("RUNPOD_SCREENING_GPU_TYPE_ID", "NVIDIA H100 PCIe")
 DEFAULT_SCREENING_TEMPLATE_ID = os.environ.get("RUNPOD_SCREENING_TEMPLATE_ID", "y5cejece4j")

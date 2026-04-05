@@ -1,0 +1,43 @@
+{
+  "description": "Stripped q15 backbone with late KV-head taper for under-cap screening.",
+  "script": "experiments/recursive_reference/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "recursive_reference_backbone_q15_late_kv2",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "NUM_LAYERS": "11",
+    "QK_GAIN_INIT": "1.5",
+    "ENABLE_RECUR": "0",
+    "ENABLE_DUAL_LANES": "0",
+    "ENABLE_DYNAMIC_QK": "0",
+    "ENABLE_XSA": "0",
+    "ENABLE_DELTA_SUBSPACE": "0",
+    "RECUR_START_LAYER": "4",
+    "RECUR_NUM_LAYERS": "2",
+    "RECUR_EXTRA_PASSES": "1",
+    "RECUR_START_STEP": "150",
+    "RECUR_WARMUP_STEPS": "100",
+    "DUAL_LANE_START_LAYER": "7",
+    "RECUR_LORA_RANK": "0",
+    "RECUR_LORA_ALPHA": "0.6",
+    "DYN_QK_POS_BUCKETS": "8",
+    "XSA_LAMBDA_INIT": "1.0",
+    "DELTA_RANK": "0",
+    "LATE_NUM_KV_HEADS": "2",
+    "LATE_KV_START_LAYER": "8"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Best raw q15 backbone with only the last three layers reduced from 4 KV heads to 2."
+}

@@ -1,0 +1,39 @@
+{
+  "description": "Single-H100 screening preset for the Scylla + Full GPTQ + normalized N-gram cache experiment.",
+  "script": "records/track_non_record_16mb/2026-04-01_Scylla_FullGPTQ_XSA11_NormalizedNGramCache/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "scylla_fullgptq_normalized_ngram_manual",
+    "DATA_PATH": "./data/datasets/fineweb10B_scylla",
+    "TOKENIZER_PATH": "./records/track_non_record_16mb/2026-04-01_Scylla_FullGPTQ_XSA11_NormalizedNGramCache/candidate.vocab",
+    "TOKENIZER_META_PATH": "./records/track_non_record_16mb/2026-04-01_Scylla_FullGPTQ_XSA11_NormalizedNGramCache/candidate.meta.npz",
+    "VOCAB_SIZE": "998",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "TTT_ENABLED": "0",
+    "NGRAM_CACHE_ENABLED": "1",
+    "NGRAM_ORDER": "9",
+    "NGRAM_ALPHA_BASE": "0.08",
+    "NGRAM_ALPHA_RANGE": "0.65",
+    "NGRAM_ENTROPY_CENTER": "3.5"
+  },
+  "remote": {
+    "data": {
+      "source": "retokenize-docs",
+      "dataset_name": "fineweb10B_scylla",
+      "train_shards": 80,
+      "repo_id": "willdepueoai/parameter-golf",
+      "remote_root": "datasets",
+      "tokenizer_config": "./data/tokenizer_specs_scylla.json",
+      "python_packages": [
+        "tokenmonster"
+      ]
+    }
+  },
+  "notes": "Directional 1xH100 screening preset for the Scylla backbone plus normalized N-gram cache. Most likely to need timing cleanup after the first real run."
+}

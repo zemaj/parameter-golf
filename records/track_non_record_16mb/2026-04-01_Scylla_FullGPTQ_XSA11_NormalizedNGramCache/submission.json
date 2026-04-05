@@ -1,0 +1,9 @@
+{
+  "name": "Experiment: Scylla + Full GPTQ + XSA-all + Normalized N-gram Cache",
+  "val_bpb": null,
+  "bytes_total": null,
+  "blurb": "Non-record experiment built from the PR #1184 Scylla backbone with an exact incremental normalized backoff cache adapted from PR #1185. TTT remains off by default so the cache can be measured in isolation.",
+  "author": "OpenAI Codex",
+  "github_id": "openai",
+  "date": "2026-04-01"
+}

@@ -1,0 +1,12 @@
+{
+  "tokenizers": [
+    {
+      "name": "scylla_998",
+      "kind": "tokenmonster",
+      "dataset_suffix": "scylla",
+      "vocab_path": "./records/track_non_record_16mb/2026-04-01_Scylla_FullGPTQ_XSA11_FA3_QKGain4_SLOT/candidate.vocab",
+      "prepend_bos": false,
+      "append_eos": false
+    }
+  ]
+}

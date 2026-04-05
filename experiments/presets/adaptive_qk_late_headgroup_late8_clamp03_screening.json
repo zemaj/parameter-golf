@@ -1,0 +1,32 @@
+{
+  "description": "Baseline-parent adaptive QK screening run with the late8 head-group gain bias and a slightly tighter log-delta clamp.",
+  "script": "experiments/adaptive_qk/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "adaptive_qk_late_headgroup_late8_clamp03_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "ADAPTIVE_QK_ENABLE": "1",
+    "ADAPTIVE_QK_MODE": "late_headgroup",
+    "ADAPTIVE_QK_HEAD_GROUPS": "4",
+    "ADAPTIVE_QK_LATE_START_LAYER": "8",
+    "ADAPTIVE_QK_POS_START_LAYER": "8",
+    "ADAPTIVE_QK_NUM_POS_BUCKETS": "8",
+    "ADAPTIVE_QK_USE_TOKEN_RMS": "0",
+    "ADAPTIVE_QK_LOG_DELTA_CLAMP": "0.3"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Follow-up to the late8 winner with a mild clamp tightening instead of a structural change."
+}

@@ -1,0 +1,9 @@
+{
+  "name": "Experiment: Scylla + Full GPTQ + QK-Gain 4.0 + SLOT",
+  "val_bpb": null,
+  "bytes_total": null,
+  "blurb": "Unrun experiment scaffold based on PR #1184 with PR #1209-style SLOT plumbing, QK_GAIN_INIT=4.0, and TTT disabled by default to isolate SLOT on the Scylla backbone.",
+  "author": "Codex",
+  "github_id": "codex",
+  "date": "2026-04-01"
+}

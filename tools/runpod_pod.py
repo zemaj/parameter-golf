@@ -5,14 +5,13 @@ import json
 from typing import Any, Dict, Iterable, Optional
 
 from runpod_client import RunpodClient, RunpodError
+from runpod_lifecycle import build_screening_pod_payload, ensure_named_screening_pod
 from runpod_config import (
     DEFAULT_CONTAINER_DISK_GB,
-    DEFAULT_PORTS,
     DEFAULT_SCREENING_GPU_TYPE_ID,
     DEFAULT_SCREENING_POD_NAME,
     DEFAULT_SCREENING_TEMPLATE_ID,
     DEFAULT_VOLUME_GB,
-    DEFAULT_VOLUME_MOUNT_PATH,
 )
 
 
@@ -91,32 +90,15 @@ def cmd_ssh(client: RunpodClient, args: argparse.Namespace) -> None:
 
 
 def cmd_up_screening(client: RunpodClient, args: argparse.Namespace) -> None:
-    pod = _find_pod_by_name(client.list_pods(), args.name)
-    if pod is not None:
-        desired_status = pod.get("desiredStatus")
-        if desired_status == "RUNNING":
-            result = {"action": "already_running", "pod": pod}
-        else:
-            resumed = client.resume_pod(pod["id"])
-            result = {"action": "resumed", "pod": resumed}
-        _print_json(result)
-        return
-
-    payload = {
-        "cloudType": "SECURE",
-        "computeType": "GPU",
-        "containerDiskInGb": args.container_disk_gb,
-        "gpuCount": args.gpu_count,
-        "gpuTypeIds": [args.gpu_type_id],
-        "interruptible": False,
-        "name": args.name,
-        "ports": list(DEFAULT_PORTS),
-        "supportPublicIp": True,
-        "templateId": args.template_id,
-        "volumeInGb": args.volume_gb,
-        "volumeMountPath": DEFAULT_VOLUME_MOUNT_PATH,
-    }
-    _print_json({"action": "created", "pod": client.create_pod(payload)})
+    payload = build_screening_pod_payload(
+        name=args.name,
+        gpu_count=args.gpu_count,
+        gpu_type_id=args.gpu_type_id,
+        template_id=args.template_id,
+        container_disk_gb=args.container_disk_gb,
+        volume_gb=args.volume_gb,
+    )
+    _print_json(ensure_named_screening_pod(client, name=args.name, payload=payload))
 
 
 def build_parser() -> argparse.ArgumentParser:

@@ -1,8 +1,8 @@
 """Download docs_selected.jsonl from Hugging Face and tokenize it locally.
 
 This script is standalone. It does not import any local exporter or tokenizer
-helpers. Tokenizer configs are JSON only and currently support the built-in
-pure-byte and SentencePiece tokenizer definitions in `data/tokenizer_specs.json`.
+helpers. Tokenizer configs are JSON only and support the built-in pure-byte,
+SentencePiece, and TokenMonster tokenizer definitions in `data/tokenizer_specs*.json`.
 """
 
 from __future__ import annotations
@@ -195,19 +195,23 @@ def tokenizer_kind(spec: dict[str, Any]) -> str:
         return "byte"
     if kind in {"sentencepiece_bpe", "sentencepiece"}:
         return "sentencepiece_bpe"
+    if kind == "tokenmonster":
+        return "tokenmonster"
     builder = str(spec.get("builder", ""))
     builder_name = builder.rsplit(":", 1)[-1]
     if builder_name == "build_pure_byte_tokenizer":
         return "byte"
     if builder_name == "build_sentencepiece_tokenizer":
         return "sentencepiece_bpe"
+    if builder_name == "build_tokenmonster_tokenizer":
+        return "tokenmonster"
     if spec.get("dataset_suffix") == "byte260":
         return "byte"
     if "vocab_size" in spec:
         return "sentencepiece_bpe"
     raise ValueError(
         f"unsupported tokenizer spec {spec.get('name', '<unnamed>')!r}: "
-        "expected a built-in pure-byte or sentencepiece builder"
+        "expected a built-in pure-byte, sentencepiece, or tokenmonster builder"
     )
 
 
@@ -300,9 +304,43 @@ def build_sentencepiece_tokenizer(*, spec: dict[str, Any], docs_jsonl: Path, tok
         "vocab_size": int(tok.vocab_size()),
         "bos_id": int(tok.bos_id()),
         "eos_id": int(tok.eos_id()),
+        "prepend_bos": bool(spec.get("prepend_bos", True)),
+        "append_eos": bool(spec.get("append_eos", APPEND_EOS)),
         "encode": lambda text, tok=tok: tok.encode(text, out_type=int),
         "encode_batch": lambda texts, tok=tok: tok.encode(texts, out_type=int, num_threads=TOKENIZER_THREADS),
         "manifest": {"model_path": str(model_path), "vocab_path": str(vocab_path)},
+    }
+
+
+def build_tokenmonster_tokenizer(*, spec: dict[str, Any], docs_jsonl: Path, tokenizers_dir: Path) -> dict[str, Any]:
+    del docs_jsonl
+    try:
+        import tokenmonster
+    except ImportError as exc:
+        raise RuntimeError("tokenmonster is required for TokenMonster tokenizer exports") from exc
+
+    vocab_path = Path(spec["vocab_path"]).expanduser().resolve()
+    if not vocab_path.is_file():
+        raise FileNotFoundError(vocab_path)
+    destination = tokenizers_dir / spec.get("filename", vocab_path.name)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if vocab_path.resolve() != destination.resolve():
+        shutil.copy2(vocab_path, destination)
+
+    tok = tokenmonster.load(str(destination))
+    return {
+        "name": spec.get("name", destination.stem),
+        "kind": "tokenmonster",
+        "dataset_suffix": spec.get("dataset_suffix", destination.stem),
+        "vocab_size": int(tok.vocab_size),
+        # TokenMonster vocabs like Scylla do not expose BOS/EOS control ids.
+        "bos_id": int(spec.get("bos_id", 0)),
+        "eos_id": int(spec.get("eos_id", 0)),
+        "prepend_bos": bool(spec.get("prepend_bos", False)),
+        "append_eos": bool(spec.get("append_eos", False)),
+        "encode": lambda text, tok=tok: tok.tokenize(text),
+        "encode_batch": lambda texts, tok=tok: tok.tokenize(texts),
+        "manifest": {"path": str(destination)},
     }
 
 
@@ -314,6 +352,7 @@ def export_shards(
     num_val_docs: int,
     shard_size: int,
     docs_total: int,
+    max_train_shards: int | None = None,
 ) -> dict[str, int]:
     output_dir.mkdir(parents=True, exist_ok=True)
     for pattern in ("fineweb_train_*.bin", "fineweb_val_*.bin"):
@@ -331,6 +370,8 @@ def export_shards(
         "tokens_val": 0,
         "tokens_train": 0,
     }
+    prepend_bos = bool(tok.get("prepend_bos", True))
+    append_eos = bool(tok.get("append_eos", APPEND_EOS))
     buf = np.empty((shard_size,), dtype=np.uint16)
     fill = 0
     split = "val"
@@ -352,7 +393,10 @@ def export_shards(
 
     batch_encode = tok.get("encode_batch")
     batch_size = SP_BATCH_SIZE if callable(batch_encode) else 1
+    stop_after_train_limit = False
     for texts in batched_docs_jsonl(docs_jsonl, batch_size):
+        if stop_after_train_limit:
+            break
         encoded_docs = batch_encode(texts) if callable(batch_encode) else [tok["encode"](text) for text in texts]
         for text, encoded in zip(texts, encoded_docs, strict=True):
             del text
@@ -362,11 +406,16 @@ def export_shards(
                 split = split_for_doc
 
             encoded_arr = np.asarray(encoded, dtype=np.int32)
-            toks = np.empty((encoded_arr.size + 1 + int(APPEND_EOS),), dtype=np.int32)
-            toks[0] = tok["bos_id"]
-            toks[1 : 1 + encoded_arr.size] = encoded_arr
-            if APPEND_EOS:
-                toks[-1] = tok["eos_id"]
+            extra = int(prepend_bos) + int(append_eos)
+            toks = np.empty((encoded_arr.size + extra,), dtype=np.int32)
+            cursor = 0
+            if prepend_bos:
+                toks[cursor] = tok["bos_id"]
+                cursor += 1
+            toks[cursor : cursor + encoded_arr.size] = encoded_arr
+            cursor += encoded_arr.size
+            if append_eos:
+                toks[cursor] = tok["eos_id"]
             if not ((0 <= toks).all() and (toks < vocab_size).all()):
                 bad = int(toks[(toks < 0) | (toks >= vocab_size)][0])
                 raise ValueError(f"token id {bad} outside declared vocab_size={vocab_size}")
@@ -385,13 +434,22 @@ def export_shards(
                 pos += take
                 if fill == shard_size:
                     flush()
+                    if split == "train" and max_train_shards is not None and shards["train"] >= max_train_shards:
+                        stop_after_train_limit = True
+                        break
+            if stop_after_train_limit:
+                break
 
         if stats["docs_total"] and stats["docs_total"] % 100_000 == 0:
             print(f"{output_dir.name}: {stats['docs_total']}/{docs_total} docs", flush=True)
 
-    flush()
-    if stats["docs_total"] != docs_total:
+    if not stop_after_train_limit:
+        flush()
+    if not stop_after_train_limit and stats["docs_total"] != docs_total:
         raise ValueError(f"expected {docs_total} docs, exported {stats['docs_total']}")
+    if max_train_shards is not None and shards["train"] < max_train_shards:
+        raise ValueError(f"expected at least {max_train_shards} train shards, exported {shards['train']}")
+    stats["docs_source_total"] = docs_total
     return stats
 
 
@@ -425,7 +483,11 @@ def build_tokenizers(
         built = (
             build_pure_byte_tokenizer(spec=spec, docs_jsonl=docs_jsonl, tokenizers_dir=tokenizers_dir)
             if kind == "byte"
-            else build_sentencepiece_tokenizer(spec=spec, docs_jsonl=docs_jsonl, tokenizers_dir=tokenizers_dir)
+            else (
+                build_sentencepiece_tokenizer(spec=spec, docs_jsonl=docs_jsonl, tokenizers_dir=tokenizers_dir)
+                if kind == "sentencepiece_bpe"
+                else build_tokenmonster_tokenizer(spec=spec, docs_jsonl=docs_jsonl, tokenizers_dir=tokenizers_dir)
+            )
         )
         name = str(built["name"])
         dataset_suffix = built.get("dataset_suffix")
@@ -448,6 +510,8 @@ def build_tokenizers(
                 "vocab_size": vocab_size,
                 "bos_id": int(built["bos_id"]),
                 "eos_id": int(built["eos_id"]),
+                "prepend_bos": bool(built.get("prepend_bos", True)),
+                "append_eos": bool(built.get("append_eos", APPEND_EOS)),
                 "encode": built["encode"],
                 "encode_batch": built.get("encode_batch"),
                 "recommended_bigram_vocab_size": recommended_bigram_vocab_size,
@@ -457,6 +521,8 @@ def build_tokenizers(
                     "vocab_size": vocab_size,
                     "bos_id": int(built["bos_id"]),
                     "eos_id": int(built["eos_id"]),
+                    "prepend_bos": bool(built.get("prepend_bos", True)),
+                    "append_eos": bool(built.get("append_eos", APPEND_EOS)),
                     "recommended_bigram_vocab_size": recommended_bigram_vocab_size,
                     "source_spec": spec,
                     **(built.get("manifest") or {}),
@@ -495,6 +561,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validation document count. Defaults to the downloaded sidecar when present, otherwise 50000.",
     )
     parser.add_argument("--chunk-tokens", type=int, default=SHARD_SIZE, help="Shard size in tokens.")
+    parser.add_argument(
+        "--max-train-shards",
+        type=int,
+        default=None,
+        help="Optional cap on the number of training shards to export. Validation shards are still exported first.",
+    )
     parser.add_argument(
         "--tokenizer-train-docs",
         type=int,
@@ -599,6 +671,7 @@ def main() -> None:
             num_val_docs=num_val_docs,
             shard_size=int(args.chunk_tokens),
             docs_total=docs_total,
+            max_train_shards=args.max_train_shards,
         )
         manifest["tokenizers"].append(tok["manifest"])
         manifest["datasets"].append(

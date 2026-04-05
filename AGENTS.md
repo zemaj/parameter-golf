@@ -14,6 +14,7 @@ Agents working in this repo should preserve those constraints and optimize for r
 ## Repo Map
 
 - `README.md`: challenge rules, leaderboard, submission requirements, and getting-started docs.
+- `RESULTS.md`: recent screening outcomes and directional learnings to check before launching similar experiments.
 - `train_gpt.py`: baseline CUDA trainer for new participants.
 - `data/`: dataset download/export helpers and tokenizer/data workflow docs.
 - `records/track_10min_16mb/`: accepted and example main-track submissions.
@@ -79,6 +80,8 @@ Be aware that ideas that improve pre-quantization loss may still fail if they:
 
 - The active lightweight experiment path is the Runpod `1xH100` screening harness under `tools/pg_harness.py`, not a local Mac or MLX path.
 - Compare screening candidates only against matched `1xH100` screening baselines from the same workflow. Do not treat screening numbers as leaderboard-comparable.
+- Check `RESULTS.md` before launching a new screening run so clearly negative nearby directions are not rerun by accident.
+- After completing or stopping an experiment, update `RESULTS.md` with the outcome, the best comparable metric you obtained, and a one-sentence explanation of what the experiment was testing.
 - Screening variance is real even on the same pod shape, so tiny deltas should be treated as tentative until repeated.
 - Keep one screening pod at most. Delete unused paused pods if you do not need their persisted volume, because stopped pods still incur storage charges.
 - For active iteration batches, keeping one pod running can be more reliable than stop/resume loops because host-capacity failures can block resume.
@@ -87,6 +90,8 @@ Be aware that ideas that improve pre-quantization loss may still fail if they:
 
 - `hash_aux_prior_screening` showed only a very small positive signal versus its matched `1xH100` baseline, so it is worth rerunning but not yet convincing.
 - `low_risk_11l_screening` was decisively worse than its matched `1xH100` baseline and also degraded badly in its final export path, so treat that configuration as a negative result unless it is substantially reworked.
+- The recent Scylla `qk_gain + SLOT` run had the best training-time signal among the new branches, but it collapsed badly after compression/export, so treat export robustness as the main bottleneck there.
+- The recent normalized Scylla N-gram cache screening run was slower and weaker than the Scylla `qk_gain + SLOT` branch and is currently a negative direction.
 
 ### When modifying training or evaluation
 
@@ -101,6 +106,15 @@ Be aware that ideas that improve pre-quantization loss may still fail if they:
 - Include exact commands, environment assumptions, artifact size, and final `val_bpb`.
 - Keep claims conservative unless supported by logs.
 - For a new SOTA-style claim, note that the repo rules require at least a `0.005` nat improvement with sufficient statistical evidence unless it is a pure systems-speed improvement.
+
+### When recording experiment results
+
+- Update `RESULTS.md` whenever you finish, stop, or materially evaluate an experiment.
+- For each new result, include:
+  - the run or log path,
+  - the best comparable final metric,
+  - a one-sentence explanation of what the experiment covered,
+  - whether the direction looks positive, negative, or inconclusive.
 
 ### When reviewing PRs or patches
 

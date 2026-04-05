@@ -1,0 +1,41 @@
+{
+  "description": "Single-H100 screening preset for the recursive dual-lane trainer experiment.",
+  "script": "experiments/recursive_reference/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "recursive_reference_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "NUM_LAYERS": "11",
+    "QK_GAIN_INIT": "4.0",
+    "ENABLE_RECUR": "1",
+    "ENABLE_DUAL_LANES": "1",
+    "ENABLE_DYNAMIC_QK": "1",
+    "ENABLE_XSA": "1",
+    "ENABLE_DELTA_SUBSPACE": "1",
+    "RECUR_START_LAYER": "4",
+    "RECUR_NUM_LAYERS": "2",
+    "RECUR_EXTRA_PASSES": "1",
+    "RECUR_START_STEP": "150",
+    "RECUR_WARMUP_STEPS": "100",
+    "DUAL_LANE_START_LAYER": "7",
+    "RECUR_LORA_RANK": "2",
+    "RECUR_LORA_ALPHA": "0.6",
+    "DYN_QK_POS_BUCKETS": "8",
+    "XSA_LAMBDA_INIT": "1.0",
+    "DELTA_RANK": "16"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Directional single-H100 screening preset for the recursive dual-lane candidate; recurrence is scheduled early enough to activate within a 600s 1xH100 run."
+}

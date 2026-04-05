@@ -1,0 +1,25 @@
+{
+  "description": "Single-H100 screening baseline using the root CUDA trainer with QK_GAIN_INIT=4.0.",
+  "script": "train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "baseline_q40_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "QK_GAIN_INIT": "4.0"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Apples-to-apples baseline comparison for adaptive-QK by only increasing the root trainer q_gain initializer."
+}

@@ -1,0 +1,27 @@
+{
+  "description": "Single-H100 screening baseline with only the final layer q_gain initialized to 4.0 while earlier layers stay at the root default.",
+  "script": "experiments/last_layer_qgain/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "last_layer_q40_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "QK_GAIN_INIT": "1.5",
+    "LAST_LAYER_QGAIN_ENABLE": "1",
+    "LAST_LAYER_QK_GAIN_INIT": "4.0"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Control for adaptive-QK: fixed q_gain boost only on the final layer."
+}

@@ -10,25 +10,25 @@ from typing import Any
 from pg_harness_lib.constants import ROOT
 from pg_harness_lib.presets import build_command, shell_env_command, tracked_env
 from runpod_client import RunpodClient, RunpodError
+from runpod_lifecycle import (
+    RESUME_RETRY_ATTEMPTS,
+    RESUME_RETRY_SLEEP_SECONDS,
+    build_screening_pod_payload,
+    ensure_screening_pod_by_id,
+    ensure_named_screening_pod,
+)
 from runpod_config import (
     DEFAULT_CONTAINER_DISK_GB,
-    DEFAULT_PORTS,
     DEFAULT_SCREENING_GPU_TYPE_ID,
+    DEFAULT_SCREENING_POD_ID,
     DEFAULT_SCREENING_POD_NAME,
     DEFAULT_SCREENING_TEMPLATE_ID,
     DEFAULT_VOLUME_GB,
-    DEFAULT_VOLUME_MOUNT_PATH,
 )
 
 
 REMOTE_ROOT = Path("/workspace/parameter-golf")
 REMOTE_LOGS_DIR = REMOTE_ROOT / "logs"
-RESUME_RETRY_SLEEP_SECONDS = 15
-RESUME_RETRY_ATTEMPTS = 12
-RETRYABLE_CAPACITY_SNIPPETS = (
-    "not enough free gpus",
-    "not enough free gpus on the host machine",
-)
 RSYNC_EXCLUDES = (
     ".git",
     ".env",
@@ -45,21 +45,12 @@ RSYNC_EXCLUDES = (
 )
 
 
-def _find_pod_by_name(pods: list[dict[str, Any]], name: str) -> dict[str, Any] | None:
-    matches = [pod for pod in pods if pod.get("name") == name]
-    if not matches:
-        return None
-    if len(matches) > 1:
-        ids = ", ".join(pod["id"] for pod in matches)
-        raise RunpodError(f"Multiple pods found with name {name!r}: {ids}")
-    return matches[0]
-
-
 class RunpodScreeningSession:
     def __init__(
         self,
         *,
         keep_pod_running: bool = False,
+        pod_id: str = DEFAULT_SCREENING_POD_ID,
         pod_name: str = DEFAULT_SCREENING_POD_NAME,
         gpu_type_id: str = DEFAULT_SCREENING_GPU_TYPE_ID,
         template_id: str = DEFAULT_SCREENING_TEMPLATE_ID,
@@ -68,6 +59,7 @@ class RunpodScreeningSession:
         identity_file: str = "~/.ssh/id_rsa",
     ):
         self.keep_pod_running = keep_pod_running
+        self.pod_id = pod_id.strip()
         self.pod_name = pod_name
         self.gpu_type_id = gpu_type_id
         self.template_id = template_id
@@ -86,70 +78,33 @@ class RunpodScreeningSession:
         if not self.keep_pod_running and self.pod is not None:
             self.client.stop_pod(self.pod["id"])
 
-    def _is_retryable_capacity_error(self, exc: RunpodError) -> bool:
-        message = str(exc).lower()
-        return any(snippet in message for snippet in RETRYABLE_CAPACITY_SNIPPETS)
-
-    def _create_pod_once(self) -> dict[str, Any]:
-        payload = {
-            "cloudType": "SECURE",
-            "computeType": "GPU",
-            "containerDiskInGb": self.container_disk_gb,
-            "gpuCount": 1,
-            "gpuTypeIds": [self.gpu_type_id],
-            "interruptible": False,
-            "name": self.pod_name,
-            "ports": list(DEFAULT_PORTS),
-            "supportPublicIp": True,
-            "templateId": self.template_id,
-            "volumeInGb": self.volume_gb,
-            "volumeMountPath": DEFAULT_VOLUME_MOUNT_PATH,
-        }
-        return self.client.create_pod(payload)
-
-    def _create_pod(self) -> dict[str, Any]:
-        last_error: RunpodError | None = None
-        for attempt in range(RESUME_RETRY_ATTEMPTS):
-            try:
-                return self._create_pod_once()
-            except RunpodError as exc:
-                if not self._is_retryable_capacity_error(exc):
-                    raise
-                last_error = exc
-                if attempt + 1 == RESUME_RETRY_ATTEMPTS:
-                    break
-                time.sleep(RESUME_RETRY_SLEEP_SECONDS)
-        raise RunpodError(
-            "Runpod could not allocate a screening pod after repeated capacity retries. "
-            f"Last error: {last_error}"
-        )
-
-    def _resume_pod(self, pod_id: str) -> dict[str, Any]:
-        last_error: RunpodError | None = None
-        for attempt in range(RESUME_RETRY_ATTEMPTS):
-            try:
-                return self.client.resume_pod(pod_id)
-            except RunpodError as exc:
-                if not self._is_retryable_capacity_error(exc):
-                    raise
-                last_error = exc
-                if attempt + 1 == RESUME_RETRY_ATTEMPTS:
-                    break
-                time.sleep(RESUME_RETRY_SLEEP_SECONDS)
-        raise RunpodError(
-            f"Runpod could not resume screening pod {pod_id} after repeated capacity retries. "
-            f"Last error: {last_error}"
-        )
-
     def ensure_pod(self) -> dict[str, Any]:
         if self.pod is not None and self.pod.get("desiredStatus") == "RUNNING" and self._has_ssh_endpoint(self.pod):
             return self.pod
 
-        pod = _find_pod_by_name(list(self.client.list_pods()), self.pod_name)
-        if pod is None:
-            pod = self._create_pod()
-        elif pod.get("desiredStatus") != "RUNNING":
-            pod = self._resume_pod(pod["id"])
+        if self.pod_id:
+            pod = ensure_screening_pod_by_id(
+                self.client,
+                pod_id=self.pod_id,
+                retry_attempts=RESUME_RETRY_ATTEMPTS,
+                retry_sleep_seconds=RESUME_RETRY_SLEEP_SECONDS,
+            )["pod"]
+        else:
+            payload = build_screening_pod_payload(
+                name=self.pod_name,
+                gpu_count=1,
+                gpu_type_id=self.gpu_type_id,
+                template_id=self.template_id,
+                container_disk_gb=self.container_disk_gb,
+                volume_gb=self.volume_gb,
+            )
+            pod = ensure_named_screening_pod(
+                self.client,
+                name=self.pod_name,
+                payload=payload,
+                retry_attempts=RESUME_RETRY_ATTEMPTS,
+                retry_sleep_seconds=RESUME_RETRY_SLEEP_SECONDS,
+            )["pod"]
 
         deadline = time.time() + 300
         while time.time() < deadline:
@@ -176,6 +131,10 @@ class RunpodScreeningSession:
             "StrictHostKeyChecking=accept-new",
             "-o",
             "LogLevel=ERROR",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "ServerAliveCountMax=10",
             "-i",
             self.identity_file,
             "-p",
@@ -200,6 +159,10 @@ class RunpodScreeningSession:
             "StrictHostKeyChecking=accept-new",
             "-o",
             "LogLevel=ERROR",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "ServerAliveCountMax=10",
             "-i",
             self.identity_file,
             "-p",
@@ -251,6 +214,10 @@ class RunpodScreeningSession:
         data = remote.get("data")
         if not data:
             return
+        source = str(data.get("source", "cached"))
+        if source == "retokenize-docs":
+            self._ensure_retokenized_dataset(data)
+            return
         variant = str(data["variant"])
         train_shards = data.get("train_shards")
         bootstrap_key = (variant, int(train_shards) if train_shards is not None else None)
@@ -262,6 +229,84 @@ class RunpodScreeningSession:
             download += f" --train-shards {int(train_shards)}"
         command = f"cd {shlex.quote(str(REMOTE_ROOT))} && {download}"
         self._run_ssh_with_retry(self._ssh_shell(command))
+        self._bootstrapped_variants.add(bootstrap_key)
+
+    def _ensure_retokenized_dataset(self, data: dict[str, Any]) -> None:
+        dataset_name = str(data["dataset_name"])
+        train_shards = int(data.get("train_shards", 80))
+        repo_id = str(data.get("repo_id", "willdepueoai/parameter-golf"))
+        remote_root = str(data.get("remote_root", "datasets"))
+        tokenizer_config = str(data["tokenizer_config"])
+        export_root = str(data.get("export_root", "/workspace/scylla_export"))
+        hf_home = str(data.get("hf_home", "/workspace/.hf"))
+        install_packages = [str(pkg) for pkg in data.get("python_packages", ["tokenmonster"])]
+        bootstrap_key = (dataset_name, train_shards, tokenizer_config, export_root)
+        if bootstrap_key in self._bootstrapped_variants:
+            return
+
+        dataset_dir = REMOTE_ROOT / "data" / "datasets" / dataset_name
+        ready_check = (
+            f"python3 - <<'PY'\n"
+            f"from pathlib import Path\n"
+            f"root = Path({str(dataset_dir)!r})\n"
+            f"train = sorted(root.glob('fineweb_train_*.bin'))\n"
+            f"val = sorted(root.glob('fineweb_val_*.bin'))\n"
+            f"raise SystemExit(0 if len(train) == {train_shards} and len(val) > 0 else 1)\n"
+            f"PY"
+        )
+        try:
+            self._run_ssh_with_retry(self._ssh_shell(f"cd {shlex.quote(str(REMOTE_ROOT))} && {ready_check}"), attempts=1)
+            self._bootstrapped_variants.add(bootstrap_key)
+            return
+        except RunpodError:
+            pass
+
+        package_check = " ".join(shlex.quote(pkg) for pkg in install_packages)
+        missing_check = (
+            "python3 -c "
+            + shlex.quote(
+                "import importlib.util; "
+                f"missing = [name for name in {install_packages!r} if importlib.util.find_spec(name) is None]; "
+                "raise SystemExit(0 if not missing else 1)"
+            )
+        )
+        install_cmd = (
+            f"{missing_check} || python3 -m pip install --break-system-packages {package_check}"
+        )
+        symlink_train_cmd = (
+            "python3 -c "
+            + shlex.quote(
+                "from pathlib import Path; "
+                f"src = Path({(export_root + '/datasets/' + dataset_name)!r}); "
+                f"dst = Path({str(dataset_dir)!r}); "
+                "files = sorted(src.glob('fineweb_train_*.bin')); "
+                f"limit = {train_shards}; "
+                "assert len(files) >= limit, f'expected at least {limit} train shards, found {len(files)}'; "
+                "dst.mkdir(parents=True, exist_ok=True); "
+                "[(target.unlink() if target.exists() or target.is_symlink() else None, target.symlink_to(path)) "
+                " for path in files[:limit] for target in [dst / path.name]]"
+            )
+        )
+        export_cmd = (
+            f"cd {shlex.quote(str(REMOTE_ROOT))} && "
+            f"mkdir -p {shlex.quote(hf_home)} {shlex.quote(hf_home + '/hub')} && "
+            f"{install_cmd} && "
+            f"rm -rf {shlex.quote(export_root)} && "
+            f"HF_HOME={shlex.quote(hf_home)} HUGGINGFACE_HUB_CACHE={shlex.quote(hf_home + '/hub')} HF_HUB_DISABLE_XET=1 "
+            f"python3 data/download_hf_docs_and_tokenize.py "
+            f"--repo-id {shlex.quote(repo_id)} "
+            f"--remote-root {shlex.quote(remote_root)} "
+            f"--output-root {shlex.quote(export_root)} "
+            f"--max-train-shards {train_shards} "
+            f"--tokenizer-config {shlex.quote(tokenizer_config)} && "
+            f"rm -rf {shlex.quote(str(dataset_dir))} && "
+            f"mkdir -p {shlex.quote(str(dataset_dir))} && "
+            f"for f in {shlex.quote(export_root)}/datasets/{shlex.quote(dataset_name)}/fineweb_val_*.bin; do "
+            f"ln -sfn \"$f\" {shlex.quote(str(dataset_dir))}/$(basename \"$f\"); "
+            f"done && "
+            f"{symlink_train_cmd}"
+        )
+        self._run_ssh_with_retry(self._ssh_shell(export_cmd), attempts=1)
         self._bootstrapped_variants.add(bootstrap_key)
 
     def run(

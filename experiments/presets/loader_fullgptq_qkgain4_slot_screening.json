@@ -1,0 +1,29 @@
+{
+  "description": "Single-H100 screening preset for the #1060-derived Loader + Full GPTQ + QK Gain 4.0 + SLOT experiment.",
+  "script": "records/track_non_record_16mb/2026-04-01_Loader_FullGPTQ_XSA11_QKGain4_SLOT/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "loader_fullgptq_qkgain4_slot_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "QK_GAIN_INIT": "4.0",
+    "SLOT_ENABLED": "1",
+    "SLOT_STEPS": "8",
+    "SLOT_LR": "0.005",
+    "TTT_ENABLED": "0"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Directional 1xH100 screening preset for the clean standard-tokenizer QK-Gain + SLOT variant."
+}

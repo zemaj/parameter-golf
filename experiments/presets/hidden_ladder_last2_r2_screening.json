@@ -1,0 +1,27 @@
+{
+  "description": "Baseline-parent hidden ladder screening run with taps from the last two layers and rank-2 low-rank fusion.",
+  "script": "experiments/hidden_ladder/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "hidden_ladder_last2_r2_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "HIDDEN_LADDER_ENABLE": "1",
+    "HIDDEN_LADDER_RANK": "2",
+    "HIDDEN_LADDER_TAP_LAYERS": "7,8"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "First hidden-ladder probe: tiny late-state fusion on the baseline parent with exact no-op initialization."
+}

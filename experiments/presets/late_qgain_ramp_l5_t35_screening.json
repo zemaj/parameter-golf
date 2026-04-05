@@ -1,0 +1,28 @@
+{
+  "description": "Single-H100 screening baseline with a fixed late-layer q_gain ramp from layer 5 to a final-layer target of 3.5.",
+  "script": "experiments/late_qgain_ramp/train_gpt.py",
+  "launch": {
+    "type": "torchrun",
+    "nproc_per_node": 1,
+    "executor": "runpod-screening"
+  },
+  "env": {
+    "RUN_ID": "late_qgain_ramp_l5_t35_screening",
+    "DATA_PATH": "./data/datasets/fineweb10B_sp1024",
+    "TOKENIZER_PATH": "./data/tokenizers/fineweb_1024_bpe.model",
+    "VOCAB_SIZE": "1024",
+    "MAX_WALLCLOCK_SECONDS": "600",
+    "VAL_LOSS_EVERY": "200",
+    "TRAIN_LOG_EVERY": "50",
+    "QK_GAIN_INIT": "1.5",
+    "LATE_QGAIN_RAMP_ENABLE": "1",
+    "LATE_QGAIN_RAMP_START_LAYER": "5",
+    "LATE_QGAIN_RAMP_TARGET_QK_GAIN_INIT": "3.5"
+  },
+  "remote": {
+    "data": {
+      "variant": "sp1024"
+    }
+  },
+  "notes": "Fixed late-layer q_gain ramp control: layers 5-8 ramp from the baseline 1.5 toward 3.5 on the final layer."
+}

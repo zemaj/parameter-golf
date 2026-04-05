@@ -1,0 +1,10 @@
+{
+  "name": "Experiment: Scylla + QK-Gain 4.0 + XSA11 + SLOT/Optional TTT",
+  "track": "non-record-16mb",
+  "val_bpb": null,
+  "bytes_total": null,
+  "blurb": "Unrun experiment scaffold based on PR #1176, ported to the Scylla tokenizer and metadata flow from PRs #1143/#1184. Defaults bias toward SLOT-first evaluation with TTT disabled until the Scylla transfer is screened.",
+  "author": "OpenAI Codex",
+  "github_id": "openai",
+  "date": "2026-04-01"
+}
